@@ -6,23 +6,31 @@ from datetime import datetime
 def main():
     st.title("Banking System")
 
-    # Check if the user is already logged in
+    # Login Section
     if 'logged_in_user' not in st.session_state:
-        user_email = st.text_input("Email")
-        password = st.text_input("Password", type="password")
-        if st.button("Login"):
-            user = authenticate_user(user_email, password)
-            if user:
-                st.session_state['logged_in_user'] = user
-                # Debugging
-                print(f"Login successful for user: {user.name} with type: {user.user_type}")
-            else:
-                st.error("Invalid login credentials.")
+        with st.sidebar:
+            user_email = st.text_input("Email")
+            password = st.text_input("Password", type="password")
+            if st.button("Login"):
+                user = authenticate_user(user_email, password)
+                if user:
+                    st.session_state['logged_in_user'] = user
+                    # Optionally redirect or notify user of successful login
+                    st.experimental_rerun()  # Rerun the app to refresh the state
+                else:
+                    st.error("Invalid login credentials.")
     else:
-        # Debugging
-        print("User is already logged in. Proceeding to post-login actions.")
-    
-    # After successful login, proceed based on user type
+        # Logout Section
+        with st.sidebar:
+            logged_in_user = st.session_state['logged_in_user']
+            st.write(f"Welcome, {logged_in_user.name} ({logged_in_user.user_type})")
+            if st.button('Logout'):
+                # Clear user-related session state upon logout
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                st.experimental_rerun()  # Optionally, refresh the app to initial state
+
+    # User-specific flows based on user type
     if 'logged_in_user' in st.session_state:
         user = st.session_state['logged_in_user']
         if user.user_type == "customer":
@@ -46,10 +54,14 @@ def authenticate_user(email, password):
         return User(user_data[1], user_data[2], user_data[3], user_data[4], user_data[0])
 
 def customer_flow(user):
-    st.write(f"Welcome, {user.name} (Customer)")
+    st.write(f"Welcome, {user.name} !")
+    st.divider()
     account_id = select_account(user.user_id)
     if account_id:
         display_account_details(account_id)
+        if st.button("View Transactions"):
+            display_transactions(account_id)
+
 
 def admin_flow():
     st.subheader("Admin Panel")
