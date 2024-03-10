@@ -4,7 +4,8 @@ from DB_banking_system import User, Account, Transaction, get_connection
 from datetime import datetime
 
 def main():
-    st.title("Banking System")
+    st.sidebar.image('gem.svg', width=50 )   
+    st.sidebar.title("JADE Bank")
 
     # Login Section
     if 'logged_in_user' not in st.session_state:
@@ -16,7 +17,7 @@ def main():
                 if user:
                     st.session_state['logged_in_user'] = user
                     # Optionally redirect or notify user of successful login
-                    st.experimental_rerun()  # Rerun the app to refresh the state
+                    st.rerun()  # Rerun the app to refresh the state
                 else:
                     st.error("Invalid login credentials.")
     else:
@@ -28,16 +29,16 @@ def main():
                 # Clear user-related session state upon logout
                 for key in list(st.session_state.keys()):
                     del st.session_state[key]
-                st.experimental_rerun()  # Optionally, refresh the app to initial state
+                st.rerun()  # Optionally, refresh the app to initial state
 
     # User-specific flows based on user type
     if 'logged_in_user' in st.session_state:
         user = st.session_state['logged_in_user']
         if user.user_type == "customer":
-            st.sidebar.write(f"Welcome, {user.name} (Customer)")
+            # st.sidebar.write(f"Welcome, {user.name} (Customer)")
             customer_flow(user)
         elif user.user_type == "admin":
-            st.sidebar.write(f"Welcome, {user.name} (Admin)")
+            # st.sidebar.write(f"Welcome, {user.name} (Admin)")
             admin_flow()
         else:
             st.error("User type is undefined.")
@@ -54,7 +55,7 @@ def authenticate_user(email, password):
         return User(user_data[1], user_data[2], user_data[3], user_data[4], user_data[0])
 
 def customer_flow(user):
-    st.write(f"Welcome, {user.name} !")
+    # st.write(f"Welcome, {user.name} !")
     st.divider()
     account_id = select_account(user.user_id)
     if account_id:
@@ -64,18 +65,20 @@ def customer_flow(user):
 
 
 def admin_flow():
-    st.subheader("Admin Panel")
+    st.sidebar.subheader("Admin Panel")
     st.divider()
     user_id = select_user()  # This updates `st.session_state.selected_user_id`
     if user_id:
-        action = st.sidebar.selectbox("Select Action", ["Create Account", "Manage Accounts"])
-        if action == "Create Account":
-            create_account(user_id)
-        elif action == "Manage Accounts":
+        action = st.sidebar.selectbox("Select Action", ["Manage Accounts", "Create Account"])
+        if action == "Manage Accounts":
             account_id = select_account(user_id)  # This updates `st.session_state.selected_account_id`
             if account_id:
                 display_account_details(account_id)
                 admin_account_actions(account_id)
+        elif action == "Create Account":
+            create_account(user_id)
+
+
 
 def create_account(user_id):
     with st.form("Account Details"):
@@ -165,7 +168,7 @@ def display_transactions(account_id):
 
 def admin_account_actions(account_id):
     st.subheader("Account Actions")
-    action = st.selectbox("Choose Action", ["Deposit", "Withdraw", "Change Interest Rate", "View Transactions"])
+    action = st.selectbox("Choose Action", ["Deposit", "Withdraw", "Change Interest Rate", "View Transactions", "Light On"])
 
     if action == "Deposit":
         # Adjust the default value to match or exceed min_value
@@ -188,11 +191,12 @@ def admin_account_actions(account_id):
             update_interest_rate(account_id, new_interest_rate)
 
     elif action == "View Transactions":
-        # Show transaction history in table
-        # new_interest_rate = st.number_input("New Interest Rate (%)", min_value=0.0, value=0.0, step=0.01)
-        # if st.button("Update Interest Rate"):
-        #     update_interest_rate(account_id, new_interest_rate)
+        # To view a list of transactions
         display_transactions(account_id)
+    
+    elif action == "Light On":
+        if st.button("Confirm $1 Light Penalty"):
+            make_withdrawal(account_id, 1.00, "Light left on")
 
 def make_deposit(account_id, amount, description):
     try:
