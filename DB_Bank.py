@@ -24,7 +24,7 @@ def main():
         # Logout Section
         with st.sidebar:
             logged_in_user = st.session_state['logged_in_user']
-            st.write(f"Welcome, {logged_in_user.name} ({logged_in_user.user_type})")
+            st.write(f"Welcome, db_bank{logged_in_user.name} ({logged_in_user.user_type})")
             if st.button('Logout'):
                 # Clear user-related session state upon logout
                 for key in list(st.session_state.keys()):
