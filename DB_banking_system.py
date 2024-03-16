@@ -1,17 +1,25 @@
 import bcrypt #Used to hash passwords
 import mysql.connector
-# import os #Used to load key from .env file
+import os #Used to load key from .env file
+from dotenv import load_dotenv
 from mysql.connector import Error
 from datetime import datetime
-# from dotenv import load_dotenv
 
 
-# Update these with your actual MySQL database credentials
+# Load environment variables from .env file
+load_dotenv()
+
+# # Print out the variables to verify their contents
+# print("DB_USER:", os.getenv("DB_USER"))
+# print("DB_PASSWORD:", os.getenv("DB_PASSWORD"))
+# print("DB_HOST:", os.getenv("DB_HOST"))
+# print("DB_NAME:", os.getenv("DB_NAME"))
+
 DATABASE_CONFIG = {
-    'user': 'Carlos',
-    'password': 'ExitoFtk#672',
-    'host': 'localhost',
-    'database': 'savings',
+    'user': os.getenv('DB_USER'),
+    'password': os.getenv('DB_PASSWORD'),
+    'host': os.getenv('DB_HOST'),
+    'database': os.getenv('DB_NAME'),
     'raise_on_warnings': True
 }
 
@@ -48,21 +56,43 @@ def authenticate_user(email, password):
     - User object if authentication is successful; None otherwise.
     """
     conn = get_connection()
-    try:
-        with conn.cursor() as cursor:
-            # Retrieve the hashed password from the database
-            cursor.execute("SELECT id, name, email, user_type, password FROM users WHERE email = %s", (email,))
-            user_data = cursor.fetchone()
-            if user_data and bcrypt.checkpw(password.encode('utf-8'), user_data[4].encode('utf-8')):
-                # User authenticated successfully
-                # Initialize the User object without the password for security reasons
-                return User(user_data[0], user_data[1], user_data[2], user_data[3])
-    except Exception as e:
-        print(f"Error authenticating user: {e}")
-    finally:
-        conn.close()
-    return None
+    if conn is not None:
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT id, name, email, user_type FROM users WHERE email = %s AND password = %s", (email, password,))
+                user_data = cursor.fetchone()
+                if user_data:
+                    return User(user_data[0], user_data[1], user_data[2], user_data[3])
+                else:
+                    return None
+        except Exception as e:
+            print(f"Error fetching user from MySQL Database: {e}")
+            return None
+        finally:
+            conn.close()  # This is safe to call because conn is not None
+    else:
+        print("Failed to establish a database connection.")
+        return None
 
+def create_user_flow(name, email, user_type, plaintext_password):
+    try:
+        hashed_password = bcrypt.hashpw(plaintext_password.encode('utf-8'), bcrypt.gensalt())
+        # Ensure you decode hashed_password if it's in byte format before saving
+        save_user_to_db(name, email, user_type, hashed_password.decode('utf-8'))
+    except Exception as e:
+        # Instead of using Streamlit's error function, raise a generic exception
+        raise Exception(f"Failed to create user: {e}")
+
+def save_user_to_db(name, email, user_type, hashed_password):
+    try:
+        with DBContextManager() as cursor:
+            cursor.execute('''
+                INSERT INTO users (name, email, user_type, password)
+                VALUES (%s, %s, %s, %s)
+            ''', (name, email, user_type, hashed_password))
+    except Exception as e:
+        raise Exception(f"Database operation failed: {e}")
+        
 class User:
     """Represents a user in the banking application."""
     def __init__(self, user_id, name, email, user_type):
@@ -70,15 +100,14 @@ class User:
         self.name = name
         self.email = email
         self.user_type = user_type
-        # self.password = password  # Hash passwords in production
 
     def save(self):
         """Saves the user to the database."""
         with DBContextManager() as cursor:
             cursor.execute('''
-                INSERT INTO users (name, email, user_type, password)
+                INSERT INTO users (name, email, user_type)
                 VALUES (%s, %s, %s, %s)
-            ''', (self.name, self.email, self.user_type, self.password))
+            ''', (self.name, self.email, self.user_type))
             self.user_id = cursor.lastrowid
 
 

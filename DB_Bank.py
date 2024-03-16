@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
-from DB_banking_system import User, Account, Transaction, get_connection, authenticate_user
+from DB_banking_system import User, Account, Transaction, get_connection, authenticate_user, create_user_flow
 from datetime import datetime
+
 
 def main():
     st.sidebar.image('gem.svg', width=50)   
@@ -15,7 +16,7 @@ def main():
             user = authenticate_user(user_email, password)
             if user:
                 st.session_state['logged_in_user'] = user
-                st.experimental_rerun()  # Refresh state
+                st.rerun()  # Refresh state
             else:
                 st.sidebar.error("Invalid login credentials.")
     else:
@@ -24,7 +25,7 @@ def main():
         if st.sidebar.button('Logout'):
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
-            st.experimental_rerun()
+            st.rerun()
 
     if 'logged_in_user' in st.session_state:
         user = st.session_state['logged_in_user']
@@ -61,9 +62,12 @@ def create_new_user():
         submit_button = st.form_submit_button("Create User")
 
         if submit_button:
-            user = User(name, email, user_type, password)
-            user.save()
-            st.success("User created successfully.")
+            try:
+                create_user_flow(name, email, user_type, password)
+                st.success("User created successfully.")
+            except Exception as e:
+                st.error(str(e))  # Display the error message provided by the exception
+
 
 def manage_existing_user():
     user_id = select_user()
@@ -229,206 +233,3 @@ if __name__ == "__main__":
 
 
 
-#Working version using MySQL before changing the program flow
-
-# def main():
-#     st.title("Banking System")
-
-#     # Main Menu
-#     choice = st.sidebar.selectbox("Menu", ["Create User", "Login", "Manage Account"])
-
-#     if choice == "Create User":
-#         create_user_form()
-
-#     elif choice == "Manage Account":
-#         user_id = select_user()
-#         if user_id:
-#             manage_account(user_id)
-
-# def create_user_form():
-#     with st.form("Create User"):
-#         name = st.text_input("Name")
-#         email = st.text_input("Email")
-#         #User type only used to create admin user
-#         # user_type = st.selectbox("User Type", ["Customer", "Admin"])
-#         password = st.text_input("Password", type="password")  # Hash this in production
-#         submitted = st.form_submit_button("Create User")
-#         if submitted:
-#             new_user = User(name, email, user_type, password)
-#             new_user.save()
-#             st.success(f"User '{name}' created successfully!")
-
-# def select_user():
-#     users = load_users()
-#     user_id = st.selectbox("Select User", list(users.keys()), format_func=lambda x: users[x])
-#     return user_id
-
-# def manage_account(user_id):
-#     account_action = st.radio("Action", ["Create Account", "Deposit", "Withdraw", "View Transactions"])
-#     if account_action == "Create Account":
-#         create_account(user_id)
-#     else:
-#         account_id = select_account(user_id)
-#         if account_id:
-#             if account_action == "Deposit":
-#                 deposit_to_account(account_id)
-#             elif account_action == "Withdraw":
-#                 withdraw_from_account(account_id)
-#             elif account_action == "View Transactions":
-#                 view_transactions(account_id)
-
-# def create_account(user_id):
-#     with st.form("Account Details"):
-#         acc_type = st.text_input("Account Type")
-#         balance = st.number_input("Initial Balance", min_value=0.0, value=0.0, step=0.01)
-#         interest_rate = st.number_input("Interest Rate (%)", min_value=0.0, value=0.0, step=0.01)
-#         submitted = st.form_submit_button("Create Account")
-#         if submitted:
-#             account = Account(acc_type, balance, interest_rate, user_id)
-#             account.save()
-#             st.success(f"Account created successfully for user ID {user_id}.")
-
-# def deposit_to_account(account_id):
-#     amount = st.number_input("Deposit Amount", min_value=0.01, value=0.0, step=0.01)
-#     description = "Deposit"
-#     if st.button("Deposit"):
-#         account = Account.load(account_id)
-#         account.deposit(amount, description)
-#         st.success(f"Deposited ${amount:.2f} to account {account_id}.")
-
-# def withdraw_from_account(account_id):
-#     amount = st.number_input("Withdrawal Amount", min_value=0.01, value=0.0, step=0.01)
-#     description = "Withdrawal"
-#     if st.button("Withdraw"):
-#         account = Account.load(account_id)
-#         account.withdraw(amount, description)
-#         st.success(f"Withdrew ${amount:.2f} from account {account_id}.")
-
-# def view_transactions(account_id):
-#     transactions = Transaction.get_transaction_history(account_id)
-#     if transactions:
-#         for t in transactions:
-#             st.write(f"{t.timestamp} - {t.type}: ${t.amount:.2f}, {t.description}")
-#     else:
-#         st.write("No transactions found.")
-
-# def load_users():
-#     conn = get_connection()
-#     cursor = conn.cursor()
-#     cursor.execute('SELECT id, name FROM users')
-#     users = {user_id: name for user_id, name in cursor.fetchall()}
-#     cursor.close()
-#     conn.close()
-#     return users
-
-# def select_account(user_id):
-#     conn = get_connection()
-#     cursor = conn.cursor()
-#     cursor.execute('SELECT id, acc_type FROM accounts WHERE owner_id = %s', (user_id,))
-#     accounts = {acc_id: acc_type for acc_id, acc_type in cursor.fetchall()}
-#     cursor.close()
-#     conn.close()
-#     account_id = st.selectbox("Select Account", list(accounts.keys()), format_func=lambda x: accounts[x])
-#     return account_id
-
-# if __name__ == "__main__":
-#     main()
-
-
-
-
-
-
-
-
-
-
-
-
-#old version using sqlite - use this to figure out formating using pandas and columns
-
-# def main():
-#     st.title("Jara Bank")
-
-#     # Main Menu
-#     choice = st.sidebar.selectbox("Menu", ["Create Account", "Manage Account"])
-
-#     if choice == "Create Account":
-#         with st.form("Create Account"):
-#             name = st.text_input("Account Name")
-#             initial_balance = st.number_input("Initial Balance", min_value=0.0, format="%.2f")
-#             interest_rate = st.number_input("Interest Rate (%)", min_value=0.0, max_value=100.0, format="%.2f")
-#             submitted = st.form_submit_button("Create Account")
-#             if submitted:
-#                 if Account.load(name) is None:
-#                     Account(name, initial_balance, interest_rate).save()
-#                     st.success(f"Account '{name}' created successfully!")
-#                 else:
-#                     st.error("Account already exists.")
-
-#     elif choice == "Manage Account":
-#         account_names = Account.get_all_account_names()
-#         account_name = st.sidebar.selectbox("Select an Account", account_names)
-#         if account_name:
-#             account = Account.load(account_name)
-#             col1, col2, col3 = st.columns(3)
-#             if account:
-#                 st.session_state["account"] = account  # Save the loaded account to session state
-#                 # st.write(f"Current Balance: ${account.get_balance():.2f}")
-#                 col1.metric(label="Owner", value=account_name)
-#                 col2.metric(label="Current Balance: $", value="{:,.2f}".format(account.get_balance()))
-#                 col3.metric(label="Current Interest: %", value="{:,.2f}".format(account.get_intrate()))
-
-#                 activity = st.sidebar.selectbox("Select Activity", ["Deposit", "Withdraw", "Set Interest Rate", "View Transactions"])
-#                 handle_activity(account, activity)
-#             else:
-#                 st.error("Account not found. Please select a valid account.")
-
-# def handle_activity(account, activity):
-#     if activity == "Deposit":
-#         deposit_amount = st.number_input("Amount to deposit", min_value=0.01, format="%.2f")
-#         deposit_description = st.text_input("Description")
-#         if st.button("Deposit"):
-#             account.deposit(deposit_amount, deposit_description)
-#             st.success(f"Deposited ${deposit_amount:.2f} to {account.name}")
-#             st.write(f"Updated Balance: ${account.get_balance():.2f}")
-#             st.balloons
-
-#     elif activity == "Withdraw":
-#         withdraw_amount = st.number_input("Amount to withdraw", min_value=0.01, format="%.2f")
-#         withdraw_description = st.text_input("Description")
-#         if st.button("Withdraw"):
-#             try:
-#                 account.withdraw(withdraw_amount, withdraw_description)
-#                 st.success(f"Withdrew ${withdraw_amount:.2f} from {account.name}")
-#                 st.write(f"Updated Balance: ${account.get_balance():.2f}")
-#             except ValueError as e:
-#                 st.error(e)
-
-#     elif activity == "Set Interest Rate":
-#         new_rate = st.number_input("New Interest Rate (%)", min_value=0.0, format="%.2f")
-#         if st.button("Set Rate"):
-#             account.set_interest_rate(new_rate)
-#             st.success(f"Interest rate updated to {new_rate}% for {account.name}")
-
-#     elif activity == "View Transactions":
-#         transactions = account.get_transaction_history(account.name)
-#         # for t in transactions:
-#         #     st.write(f"{t[0]} - {t[1]}: ${t[2]:.2f}, Description: {t[3]}")
-#         if transactions:
-#             # Convert transactions list to a DataFrame for better display
-#             # import pandas as pd
-
-#             # Assuming transaction structure: [timestamp, type, amount, description]
-#             df = pd.DataFrame(transactions, columns=['Timestamp', 'Type', 'Amount', 'Description'])
-            
-#             # Optionally, you can format the 'Amount' column to display as currency
-#             df['Amount'] = df['Amount'].apply(lambda x: f"${x:.2f}")
-            
-#             st.dataframe(df)
-#         else:
-#             st.write("No transactions found for this account.")
-
-
-# if __name__ == "__main__":
-#     main()
