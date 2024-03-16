@@ -1,58 +1,47 @@
 import streamlit as st
 import pandas as pd
-from DB_banking_system import User, Account, Transaction, get_connection
+from DB_banking_system import User, Account, Transaction, get_connection, authenticate_user
 from datetime import datetime
 
 def main():
-    st.sidebar.image('gem.svg', width=50 )   
+    st.sidebar.image('gem.svg', width=50)   
     st.sidebar.title("JADE Bank")
 
     # Login Section
     if 'logged_in_user' not in st.session_state:
-        with st.sidebar:
-            user_email = st.text_input("Email")
-            password = st.text_input("Password", type="password")
-            if st.button("Login"):
-                user = authenticate_user(user_email, password)
-                if user:
-                    st.session_state['logged_in_user'] = user
-                    # Optionally redirect or notify user of successful login
-                    st.rerun()  # Rerun the app to refresh the state
-                else:
-                    st.error("Invalid login credentials.")
+        user_email = st.sidebar.text_input("Email")
+        password = st.sidebar.text_input("Password", type="password")
+        if st.sidebar.button("Login"):
+            user = authenticate_user(user_email, password)
+            if user:
+                st.session_state['logged_in_user'] = user
+                st.experimental_rerun()  # Refresh state
+            else:
+                st.sidebar.error("Invalid login credentials.")
     else:
-        # Logout Section
-        with st.sidebar:
-            logged_in_user = st.session_state['logged_in_user']
-            st.write(f"Welcome, db_bank{logged_in_user.name} ({logged_in_user.user_type})")
-            if st.button('Logout'):
-                # Clear user-related session state upon logout
-                for key in list(st.session_state.keys()):
-                    del st.session_state[key]
-                st.rerun()  # Optionally, refresh the app to initial state
+        logged_in_user = st.session_state['logged_in_user']
+        st.sidebar.write(f"Welcome, {logged_in_user.name} ({logged_in_user.user_type})")
+        if st.sidebar.button('Logout'):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.experimental_rerun()
 
-    # User-specific flows based on user type
     if 'logged_in_user' in st.session_state:
         user = st.session_state['logged_in_user']
         if user.user_type == "customer":
-            # st.sidebar.write(f"Welcome, {user.name} (Customer)")
             customer_flow(user)
         elif user.user_type == "admin":
-            # st.sidebar.write(f"Welcome, {user.name} (Admin)")
             admin_flow()
-        else:
-            st.error("User type is undefined.")
 
-def authenticate_user(email, password):
-    # This function is not secure and serves as a placeholder. Use proper authentication methods.
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE email = %s AND password = %s", (email, password,))
-    user_data = cursor.fetchone()
-    cursor.close()
-    conn.close()
-    if user_data:
-        return User(user_data[1], user_data[2], user_data[3], user_data[4], user_data[0])
+def admin_flow():
+    st.sidebar.subheader("Admin Panel")
+    admin_action = st.sidebar.radio("Admin Actions", ["Manage Existing User", "Create New User"])
+
+    if admin_action == "Manage Existing User":
+        manage_existing_user()
+    elif admin_action == "Create New User":
+        create_new_user()
+
 
 def customer_flow(user):
     # st.write(f"Welcome, {user.name} !")
@@ -63,21 +52,30 @@ def customer_flow(user):
         if st.button("View Transactions"):
             display_transactions(account_id)
 
+def create_new_user():
+    with st.form("Create New User"):
+        name = st.text_input("Name")
+        email = st.text_input("Email")
+        user_type = st.selectbox("User Type", ["user", "admin"])
+        password = st.text_input("Password", type="password")
+        submit_button = st.form_submit_button("Create User")
 
-def admin_flow():
-    st.sidebar.subheader("Admin Panel")
-    st.divider()
-    user_id = select_user()  # This updates `st.session_state.selected_user_id`
+        if submit_button:
+            user = User(name, email, user_type, password)
+            user.save()
+            st.success("User created successfully.")
+
+def manage_existing_user():
+    user_id = select_user()
     if user_id:
-        action = st.sidebar.selectbox("Select Action", ["Manage Accounts", "Create Account"])
-        if action == "Manage Accounts":
-            account_id = select_account(user_id)  # This updates `st.session_state.selected_account_id`
+        user_action = st.radio("Actions for Selected User", ["Select Account","Create New Account"])
+        if user_action == "Create New Account":
+            create_account(user_id)
+        elif user_action == "Select Account":
+            account_id = select_account(user_id)
             if account_id:
                 display_account_details(account_id)
                 admin_account_actions(account_id)
-        elif action == "Create Account":
-            create_account(user_id)
-
 
 
 def create_account(user_id):
@@ -95,7 +93,8 @@ def create_account(user_id):
 def select_user():
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name FROM users WHERE user_type = 'customer'")
+    # cursor.execute("SELECT id, name FROM users WHERE user_type = 'customer'")
+    cursor.execute("SELECT id, name FROM users")
     users = {user_id: name for user_id, name in cursor.fetchall()}
     cursor.close()
     conn.close()
@@ -104,7 +103,7 @@ def select_user():
     user_names = [users[uid] for uid in user_ids]
     
     # Use index position for value and a callback to update session state on selection
-    selected_index = st.sidebar.selectbox("Select Customer", range(len(user_ids)), format_func=lambda x: user_names[x])
+    selected_index = st.sidebar.selectbox("Select User", range(len(user_ids)), format_func=lambda x: user_names[x])
     selected_user_id = user_ids[selected_index]
     
     # Update session state when a new user is selected

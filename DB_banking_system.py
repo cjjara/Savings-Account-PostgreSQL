@@ -1,6 +1,10 @@
+import bcrypt #Used to hash passwords
 import mysql.connector
+# import os #Used to load key from .env file
 from mysql.connector import Error
 from datetime import datetime
+# from dotenv import load_dotenv
+
 
 # Update these with your actual MySQL database credentials
 DATABASE_CONFIG = {
@@ -32,14 +36,41 @@ def get_connection():
         print(f"Error connecting to MySQL Database: {e}")
         return None
 
+def authenticate_user(email, password):
+    """
+    Authenticate a user based on email and hashed password.
+    
+    Parameters:
+    - email (str): The user's email address.
+    - password (str): The user's password (plain text, to be hashed).
+    
+    Returns:
+    - User object if authentication is successful; None otherwise.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Retrieve the hashed password from the database
+            cursor.execute("SELECT id, name, email, user_type, password FROM users WHERE email = %s", (email,))
+            user_data = cursor.fetchone()
+            if user_data and bcrypt.checkpw(password.encode('utf-8'), user_data[4].encode('utf-8')):
+                # User authenticated successfully
+                # Initialize the User object without the password for security reasons
+                return User(user_data[0], user_data[1], user_data[2], user_data[3])
+    except Exception as e:
+        print(f"Error authenticating user: {e}")
+    finally:
+        conn.close()
+    return None
+
 class User:
     """Represents a user in the banking application."""
-    def __init__(self, name, email, user_type, password, user_id=None):
+    def __init__(self, user_id, name, email, user_type):
         self.user_id = user_id
         self.name = name
         self.email = email
         self.user_type = user_type
-        self.password = password  # Hash passwords in production
+        # self.password = password  # Hash passwords in production
 
     def save(self):
         """Saves the user to the database."""
