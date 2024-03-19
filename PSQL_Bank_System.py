@@ -49,6 +49,7 @@ def authenticate_user(email, plaintext_password):
                     stored_hashed_password = user_data[4]  # Assuming the password is the fifth column
                     # Now, compare the provided password with the stored hashed password
                     if bcrypt.checkpw(plaintext_password.encode('utf-8'), stored_hashed_password.encode('utf-8')):
+                    # if plaintext_password == stored_hashed_password:
                         # If the password matches, return the user object without the password
                         return User(user_data[0], user_data[1], user_data[2], user_data[3])
                     else:

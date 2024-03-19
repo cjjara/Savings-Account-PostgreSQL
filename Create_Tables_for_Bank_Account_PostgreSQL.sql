@@ -45,3 +45,12 @@ ALTER TABLE tableName ALTER COLUMN colname TYPE new_datatype USING colname::new_
 --@block
 INSERT INTO  users (name, email, user_type, password)
 VALUES ('Carlos', 'cjj@gmail.com', 'admin', 'test');
+
+--@block
+DELETE FROM cars
+WHERE brand = 'Volvo';
+
+--@block
+UPDATE users
+SET password = 'unhashed_password'
+WHERE name = 'Carlos2';
