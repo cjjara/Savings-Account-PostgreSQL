@@ -5,15 +5,25 @@ from dotenv import load_dotenv
 from psycopg2 import sql, errors, DatabaseError
 from psycopg2.extras import DictCursor
 from datetime import datetime
+import streamlit as st #Used to read db credentials from secrets file
 
+
+# Database connection details using .env file. Used instead of streamlit secrets file
 # Load environment variables from .env file
-load_dotenv()
+# load_dotenv()
+
+# DATABASE_CONFIG = {
+#     'dbname': os.getenv('DB_NAME'),
+#     'user': os.getenv('DB_USER'),
+#     'password': os.getenv('DB_PASSWORD'),
+#     'host': os.getenv('DB_HOST')
+# }
 
 DATABASE_CONFIG = {
-    'dbname': os.getenv('DB_NAME'),
-    'user': os.getenv('DB_USER'),
-    'password': os.getenv('DB_PASSWORD'),
-    'host': os.getenv('DB_HOST')
+    'dbname': st.secrets['DB_NAME'],
+    'user': st.secrets['DB_USER'],
+    'password': st.secrets['DB_PASSWORD'],
+    'host': st.secrets['DB_HOST']
 }
 
 class DBContextManager:

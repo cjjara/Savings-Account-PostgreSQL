@@ -4,7 +4,18 @@
 ### Python ###
 
 # My code that should not be loaded to Git
+secrets.toml
 hash_utils.py
+.streamlit/
+Create_Tables_for_Bank_Account_PostgreSQL.sql
+Create_Tables_for_Bank_Account.sql
+DB_Bank.py
+DB_banking_system.py
+DB_connection_test.py
+Neon conn test.py
+PSQL_hash_utils.py
+Test MySQL connection.py
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

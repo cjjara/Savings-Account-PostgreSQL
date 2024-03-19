@@ -9,9 +9,6 @@ from PSQL_Bank_System import get_connection
 # Load environment variables from .env file
 load_dotenv()    
 
-print("Successfully connected")
-
-
 def hash_and_update_passwords_for_all_users():
     conn = get_connection()
     try:
